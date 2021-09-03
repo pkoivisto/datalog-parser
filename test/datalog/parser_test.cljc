@@ -96,8 +96,26 @@
                "Only one of these three options is allowed: :keys :strs :syms"
 
                '[:find ?e :in $ ?src :where [?e :attr/val ?v] [?e :attr/src ?src]]
-               "The most restrictive where-clause (with ?src) should be first"))
+               "Potentially expensive ordering of clauses! Clause introduces two or more previously unseen variables: [?e :attr/val ?v]"))
 
 
 (comment
-  (parser/parse '[:find ?e :in $ ?src :where [?e :attr/val ?v] [?e :attr/src ?src]]))
+  (let [parse-res (parser/parse '[:find ?e :in $ ?src :where [?e :attr/val ?v] [?e :attr/src ?src]])
+        clauses (:qwhere parse-res)
+        input-vars (datalog.parser.impl/collect-type Variable (:qin parse-res) #{})]
+    (loop [seen-vars input-vars
+           clause (first clauses)
+           clauses (rest clauses)
+           clause->new-vars []]
+      (if (nil? clause)
+        clause->new-vars
+        (let [pattern (:pattern clause)
+              _ (clojure.pprint/pprint pattern)
+              new-vars (clojure.set/difference (datalog.parser.impl/collect-type Variable pattern #{})
+                                               seen-vars)]
+          (recur
+            (into seen-vars new-vars)
+            (first clauses)
+            (rest clauses)
+            (conj clause->new-vars [clause new-vars]))))))
+  )

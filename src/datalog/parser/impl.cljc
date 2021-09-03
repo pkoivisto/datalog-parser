@@ -570,5 +570,28 @@
     (when (and (not (empty? rule-exprs))
                (empty? rules-vars))
       (raise "Missing rules var '%' in :in"
-             {:error :parser/query, :form form}))))
+             {:error :parser/query, :form form})))
+
+  (let [clauses (:qwhere q)
+        input-vars (collect-type Variable (:qin q) #{})
+        clause->new-vars
+        (loop [seen-vars input-vars
+               clause (first clauses)
+               clauses (rest clauses)
+               clause->new-vars []]
+          (if (nil? clause)
+            clause->new-vars
+            (let [pattern (:pattern clause)
+                  new-vars (set/difference (collect-type Variable pattern #{}) seen-vars)]
+              (recur
+                (into seen-vars new-vars)
+                (first clauses)
+                (rest clauses)
+                (conj clause->new-vars [clause new-vars])))))]
+    (doseq [[clause new-vars] clause->new-vars]
+      (when (<= 2 (count new-vars))
+        (raise "Potentially expensive ordering of clauses! Clause introduces two or more previously unseen variables: "
+               (into [] (->> (:pattern clause)
+                             (map #(or (:symbol %) (:value %)))))
+               {:error :parser/query, :form form})))))
 
