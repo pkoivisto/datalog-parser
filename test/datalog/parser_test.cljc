@@ -93,4 +93,11 @@
                "Count of :keys/:strs/:syms must match count of :find"
 
                '[:find ?e :strs '(foo bar) :keys '("foo" "bar") :where [?e] :offset 666]
-               "Only one of these three options is allowed: :keys :strs :syms"))
+               "Only one of these three options is allowed: :keys :strs :syms"
+
+               '[:find ?e :in $ ?src :where [?e :attr/val ?v] [?e :attr/src ?src]]
+               "The most restrictive where-clause (with ?src) should be first"))
+
+
+(comment
+  (parser/parse '[:find ?e :in $ ?src :where [?e :attr/val ?v] [?e :attr/src ?src]]))
